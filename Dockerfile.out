@@ -1,0 +1,12 @@
+FROM golang:alpine as BUILDER
+RUN apk --no-cache add git
+WORKDIR /go/src/app
+COPY ./src/github.com/jyfletcher/inside-out .
+RUN go get -d -v ./...
+RUN go install ./...
+
+FROM golang:alpine
+COPY --from=BUILDER /go/bin/out /out
+RUN apk --no-cache add tini
+ENTRYPOINT ["/sbin/tini", "--", "/out"]
+
