@@ -6,17 +6,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-
-	"io/ioutil"
+	uuid "github.com/satori/go.uuid"
+	"github.com/streadway/amqp"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
-
-	uuid "github.com/satori/go.uuid"
-	"github.com/streadway/amqp"
 )
 
 type AMQPREQRESP struct {
@@ -65,7 +63,6 @@ var NODEID string
 var CONFIG Config
 
 func init() {
-	rand.Seed(time.Now().Unix())
 	AMQPREQUESTCHAN = make(chan AMQPPayload, 50)
 	HTTPRESPONSECHAN = make(chan AMQPPayload, 50)
 	NODEID = genID()
@@ -183,6 +180,9 @@ func executeRequest(p AMQPPayload, client *http.Client) {
 		return
 	}
 
+	// TODO: This would be better as a round-robin backend choice
+	// to avoid random walks using the same backend several times
+	// in a row.
 	backendHost := p.Backends[rand.Intn(numBackends)]
 
 	if CONFIG.DEBUG {
@@ -261,7 +261,9 @@ func packagePayload(requestPayload AMQPPayload, response *http.Response) AMQPPay
 	p.StatusCode = response.StatusCode
 	p.URL = requestPayload.URL
 
-	bodyBytes, err := ioutil.ReadAll(response.Body)
+	// TODO: Need to consider the case of queries that do not have a
+	// request and/or response body. 'out' needs to be checked as well.
+	bodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Println("Unable to read request body: ", err)
 		return AMQPPayload{CorrID: requestPayload.CorrID, Key: requestPayload.Key}
@@ -316,6 +318,8 @@ func getAMQPChan(c AMQPConnInfo) (*amqp.Channel, chan *amqp.Error) {
 	var conn *amqp.Connection
 	var err error
 
+	// Loop over trying to connect to the AMQP server
+	// With a 2 second pause between tries
 	for conn, err = amqp.Dial(c.AmqpURI); err != nil; conn, err = amqp.Dial(c.AmqpURI) {
 		time.Sleep(2 * time.Second)
 		log.Println("Unable to connect to AMQP host: ", err)

@@ -5,18 +5,13 @@ import "encoding/json"
 import "fmt"
 import "github.com/satori/go.uuid"
 import "github.com/streadway/amqp"
-import "io/ioutil"
+import "io"
 import "log"
 import "net/http"
 import "os"
 import "strconv"
 import "strings"
 import "time"
-
-/*               <---- upstream ----- downstream ----->
-Architecture: [backend] [inside] <fw> [outside] [load balancer] <fw> [internet]
-
-*/
 
 type HTTPREQRESP struct {
 	Request  *http.Request
@@ -123,7 +118,7 @@ func init() {
 		log.Fatal("Environment variable HTTP_TIMEOUT_S must be set to a positive integer in seconds.")
 	}
 	if httpTimeout <= 0 {
-		log.Fatal("Really?  You either want instantly timeout the HTTP connection!?!?!?!?!?")
+		log.Fatal("Really?  You want to instantly timeout the HTTP connection!?!?!?")
 	}
 	CONFIG.HTTPTimeout = httpTimeout
 
@@ -216,7 +211,7 @@ func packagePayload(rr HTTPREQRESP) AMQPPayload {
 	p.URL = rr.Request.URL.String()
 	p.Backends = CONFIG.Backends
 
-	bodyBytes, err := ioutil.ReadAll(rr.Request.Body)
+	bodyBytes, err := io.ReadAll(rr.Request.Body)
 	if err != nil {
 		// Something is wrong with the connection, return empty payload with routing info
 		// TODO: Maybe this should return a 4xx (400?)
@@ -289,6 +284,9 @@ func requestSender(c AMQPConnInfo) {
 				Priority:        0,
 			}
 
+			// Loop over sending the message until CONFIG.MaxRetries is reached.
+			// TODO: The for statement is ugly.
+			// Maybe loop over curTries <= CONFIG.MaxRetries instead.
 			curTries := 1
 			for err = ch.Publish(c.Exchange, NODEID, true, false, msg); err != nil; ch.Publish(c.Exchange, NODEID, true, false, msg) {
 				fmt.Println("Error publishing message to AMQP server: ", err, " retries: ", curTries)
