@@ -26,6 +26,8 @@ The message bodies are base64 encoded so that any HTTP request/response should b
 
 Configuration is through environment variables, whether is is being run in a container or at the command line. See the ``setenv.sh`` file for the variables that need to be set for both services.
 
+The file ``run.sh`` contains an example docker run.
+
 There is a dependency on RabbitMQ. The services will create the queues they need so they need to be configured with accounts that allow them to do so.
 
 Once the queue is running, the configuration variables are set, then it should just work. The Out service will listen on the configured TCP port and any queries sent to it on that port should act the same as if you were sending requests to the backend directly.
