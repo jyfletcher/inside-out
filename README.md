@@ -18,7 +18,7 @@ The client request will hit the Out service (exposed to the outside in a DMZ), w
 
 ## Design
 
-Each HTTP request in Go is handled by a goroutine, so leveraging that each response to the request fires off a blocking channel listen for the response in the queue. A correlation ID is created for every request to make sure the right response is returned to the corresponding request.
+Each HTTP request in Go is handled by a goroutine, so leveraging that each response to the request fires off a blocking channel listen for the response in the queue. A correlation ID is created for every request to make sure the right response is return to the corresponding request.
 
 The message bodies are base64 encoded so that any HTTP request/response should be fine without jumping through content encoding hoops. RabbitMQ messages are binary to begin with but the choice of base64 encoding was just to account for other potential queuing solutions that transmit text.
 
